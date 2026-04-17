@@ -46,23 +46,34 @@ export default function App() {
 
   const fetchProfile = async (userId: string) => {
     try {
+      // 1. Get current user to check for specific admin email
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // 2. HARD-CODED ADMIN REDIRECTION: Ensure admin123@gmail.com is never stuck
+      if (user?.email === 'admin123@gmail.com') {
+        setUserRole('designer');
+        setActiveSection('admin');
+        setLoading(false);
+        return; // Exit early so database errors don't block the admin
+      }
+
+      // 3. Standard profile lookup for regular users
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', userId)
         .single();
       
-      if (error) throw error;
-      setUserRole(data.role);
-      
-      // Auto-open admin page for the specific admin user
-      const user = (await supabase.auth.getUser()).data.user;
-      if (user?.email === 'admin123@gmail.com') {
-        setActiveSection('admin');
+      if (error) {
+        console.warn('Profile not found, defaulting to client:', error.message);
+        setUserRole('client');
+      } else {
+        setUserRole(data.role);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
-      // Fallback or handle error
+      console.error('Error in fetchProfile:', error);
+      // Fallback for unexpected errors so user isn't stuck behind loader
+      setUserRole('client');
     } finally {
       setLoading(false);
     }
