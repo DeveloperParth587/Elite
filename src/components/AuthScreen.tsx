@@ -7,7 +7,8 @@ import {
   ShieldCheck,
   Zap,
   Globe,
-  Loader2
+  Loader2,
+  Diamond
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,8 +23,8 @@ interface AuthScreenProps {
 
 export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [activeTab, setActiveTab] = React.useState<'designer' | 'client'>('designer');
-  const [email, setEmail] = React.useState('admin123@gmail.com');
-  const [password, setPassword] = React.useState('admin123');
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
 
   const handleEmailLogin = async () => {
@@ -102,11 +103,14 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
         </div>
         
         <div className="relative z-10 w-full max-w-xl">
-           <div className="flex items-center gap-3 mb-16">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-2xl shadow-black/10">
-                <Palette className="h-6 w-6 text-brand-olive" />
+           <div className="flex items-center gap-4 mb-20">
+              <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] transform -rotate-3 border border-brand-border">
+                <Diamond className="h-8 w-8 text-brand-olive fill-brand-olive/10" />
               </div>
-              <span className="text-3xl font-serif text-white tracking-tight uppercase">AuraDesign AI</span>
+              <div>
+                <span className="text-4xl font-serif text-white tracking-[0.1em] uppercase block">Elite Design</span>
+                <span className="text-[10px] font-bold text-brand-clay uppercase tracking-[0.5em] mt-1 block">Signature Studio</span>
+              </div>
            </div>
  
            <motion.div 

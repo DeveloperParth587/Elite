@@ -10,7 +10,9 @@ import {
   ChevronRight,
   Menu,
   X,
-  Palette
+  Palette,
+  Diamond,
+  ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -18,22 +20,26 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SidebarProps {
   role: 'designer' | 'client';
+  userEmail?: string;
   activeSection: string;
   onSectionChange: (section: string) => void;
   onLogout: () => void;
 }
 
-export function Sidebar({ role, activeSection, onSectionChange, onLogout }: SidebarProps) {
+export function Sidebar({ role, userEmail, activeSection, onSectionChange, onLogout }: SidebarProps) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  const isAdmin = userEmail === 'admin123@gmail.com';
+
   const designerItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'admin', label: 'Admin Portal', icon: ShieldCheck, show: isAdmin },
     { id: 'projects', label: 'Projects', icon: Package },
     { id: 'new-design', label: 'New AI Design', icon: PlusCircle },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'analytics', label: 'Reports', icon: BarChart3 },
-  ];
+  ].filter(item => item.show !== false);
 
   const clientItems = [
     { id: 'dashboard', label: 'My Projects', icon: LayoutDashboard },
@@ -58,12 +64,20 @@ export function Sidebar({ role, activeSection, onSectionChange, onLogout }: Side
       )}>
         <div className="flex flex-col h-full">
           {/* Logo Area */}
-          <div className="h-20 flex items-center px-6">
+          <div className="h-24 flex items-center px-6 border-b border-brand-border/50 mb-4 bg-white/30 backdrop-blur-md">
             {!collapsed && (
-              <span className="font-serif italic text-2xl tracking-tight text-brand-olive">VogueSpace</span>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-brand-olive rounded-xl flex items-center justify-center shadow-lg shadow-brand-olive/20">
+                  <Diamond className="h-5 w-5 text-white fill-white/10" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-serif italic text-lg leading-tight text-brand-olive">Elite Design</span>
+                  <span className="text-[7px] font-bold uppercase tracking-[0.3em] text-brand-clay -mt-0.5">Studio</span>
+                </div>
+              </div>
             )}
             {collapsed && (
-              <Palette className="h-6 w-6 text-brand-olive mx-auto" />
+              <Diamond className="h-6 w-6 text-brand-olive mx-auto" />
             )}
           </div>
 
