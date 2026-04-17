@@ -95,5 +95,20 @@ export const dataService = {
     };
 
     return stats;
+  },
+
+  async addMember(member: { email: string; password?: string; role: 'designer' | 'client' }) {
+    const response = await fetch('/api/admin/add-member', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...member,
+        password: member.password || 'Welcome123!' // Default password
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
+    return data.user;
   }
 };

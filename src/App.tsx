@@ -8,6 +8,7 @@ import { Sidebar } from './components/Sidebar';
 import { DesignerDashboard } from './components/DesignerDashboard';
 import { AIDesignGenerator } from './components/AIDesignGenerator';
 import { ClientDashboard } from './components/ClientDashboard';
+import { AdminMemberManager } from './components/AdminMemberManager';
 import { AuthScreen } from './components/AuthScreen';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
@@ -22,6 +23,7 @@ export default function App() {
   const [userRole, setUserRole] = useState<'designer' | 'client' | null>(null);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [loading, setLoading] = useState(true);
+  const [adminView, setAdminView] = useState<'main' | 'members'>('main');
 
   useEffect(() => {
     // Get initial session
@@ -107,7 +109,10 @@ export default function App() {
         role={userRole} 
         userEmail={session.user.email}
         activeSection={activeSection} 
-        onSectionChange={setActiveSection} 
+        onSectionChange={(s) => {
+          setActiveSection(s);
+          setAdminView('main');
+        }} 
         onLogout={handleLogout}
       />
       
@@ -119,34 +124,44 @@ export default function App() {
                 <DesignerDashboard onNewDesign={() => setActiveSection('new-design')} />
               )}
               {activeSection === 'admin' && (
-                <div className="space-y-8 animate-in fade-in duration-700">
-                  <div className="flex flex-col gap-2">
-                    <h1 className="text-4xl font-serif text-brand-ink italic">Admin Control Center</h1>
-                    <p className="text-neutral-500 font-medium">Global studio configurations and system management.</p>
+                adminView === 'main' ? (
+                  <div className="space-y-8 animate-in fade-in duration-700">
+                    <div className="flex flex-col gap-2">
+                      <h1 className="text-4xl font-serif text-brand-ink italic">Admin Control Center</h1>
+                      <p className="text-neutral-500 font-medium">Global studio configurations and system management.</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <Card className="border-brand-border bg-white shadow-sm rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 font-sans ring-1 ring-brand-border/10">
+                        <div className="w-16 h-16 bg-brand-olive/10 rounded-full flex items-center justify-center text-brand-olive font-serif italic text-2xl">M</div>
+                        <div>
+                          <h3 className="font-bold text-brand-ink">Member Access</h3>
+                          <p className="text-xs text-neutral-400 mt-1">Manage designer permissions</p>
+                        </div>
+                        <Button 
+                          onClick={() => setAdminView('members')}
+                          variant="outline" 
+                          className="w-full rounded-xl border-dashed border-neutral-300"
+                        >
+                          Configure
+                        </Button>
+                      </Card>
+                      <Card className="border-brand-border bg-white shadow-sm rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 font-sans ring-1 ring-brand-border/10">
+                        <div className="w-16 h-16 bg-brand-clay/10 rounded-full flex items-center justify-center text-brand-clay font-serif italic text-2xl">S</div>
+                        <div>
+                          <h3 className="font-bold text-brand-ink">System Logs</h3>
+                          <p className="text-xs text-neutral-400 mt-1">Audit generation activity</p>
+                        </div>
+                        <Button variant="outline" className="w-full rounded-xl border-dashed border-neutral-300">View Logs</Button>
+                      </Card>
+                      <Card className="border-brand-border bg-white shadow-sm rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 border-dashed border-2 font-sans opacity-50">
+                        <PlusCircle className="h-10 w-10 text-neutral-200" />
+                        <div className="text-neutral-400 text-sm font-medium">Add System Hook</div>
+                      </Card>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="border-brand-border bg-white shadow-sm rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4">
-                      <div className="w-16 h-16 bg-brand-olive/10 rounded-full flex items-center justify-center text-brand-olive font-serif italic text-2xl">M</div>
-                      <div>
-                        <h3 className="font-bold text-brand-ink">Member Access</h3>
-                        <p className="text-xs text-neutral-400 mt-1">Manage designer permissions</p>
-                      </div>
-                      <Button variant="outline" className="w-full rounded-xl border-dashed border-neutral-300">Configure</Button>
-                    </Card>
-                    <Card className="border-brand-border bg-white shadow-sm rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4">
-                      <div className="w-16 h-16 bg-brand-clay/10 rounded-full flex items-center justify-center text-brand-clay font-serif italic text-2xl">S</div>
-                      <div>
-                        <h3 className="font-bold text-brand-ink">System Logs</h3>
-                        <p className="text-xs text-neutral-400 mt-1">Audit generation activity</p>
-                      </div>
-                      <Button variant="outline" className="w-full rounded-xl border-dashed border-neutral-300">View Logs</Button>
-                    </Card>
-                    <Card className="border-brand-border bg-white shadow-sm rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-4 border-dashed border-2">
-                      <PlusCircle className="h-10 w-10 text-neutral-200" />
-                      <div className="text-neutral-400 text-sm font-medium">Add System Hook</div>
-                    </Card>
-                  </div>
-                </div>
+                ) : (
+                  <AdminMemberManager onBack={() => setAdminView('main')} />
+                )
               )}
               {activeSection === 'new-design' && (
                 <AIDesignGenerator onBack={() => setActiveSection('dashboard')} />

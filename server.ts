@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import ExcelJS from "exceljs";
 import { GoogleGenAI, Type } from "@google/genai";
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,11 +14,53 @@ const genAI = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
+// Initialize Supabase Admin
+const supabaseAdmin = (process.env.VITE_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  ? createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+  : null;
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // API Route for Admin: Add Member
+  app.post("/api/admin/add-member", async (req, res) => {
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: "Supabase Admin is not configured." });
+    }
+
+    try {
+      const { email, password, role } = req.body;
+      
+      // 1. Create User in Auth
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true
+      });
+
+      if (authError) throw authError;
+
+      // 2. Create Profile
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert([{ id: authData.user.id, email, role }]);
+
+      if (profileError) throw profileError;
+
+      res.json({ success: true, user: authData.user });
+    } catch (error: any) {
+      console.error("Admin add-member error:", error);
+      res.status(500).json({ error: error.message || "Failed to add member" });
+    }
+  });
 
   // API Route for AI Image Generation
   app.post("/api/generate-image", async (req, res) => {
