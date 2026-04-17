@@ -44,17 +44,99 @@ import { generateFurnitureImage, generateBOM } from '@/lib/gemini';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 
+import { dataService } from '@/services/dataService';
+import { supabase } from '@/lib/supabase';
+
 interface AIDesignGeneratorProps {
   onBack: () => void;
 }
 
 export function AIDesignGenerator({ onBack }: AIDesignGeneratorProps) {
   const [loading, setLoading] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [clients, setClients] = React.useState<any[]>([]);
+  const [projects, setProjects] = React.useState<any[]>([]);
+  const [selectedClientId, setSelectedClientId] = React.useState<string>('');
+  const [selectedProjectId, setSelectedProjectId] = React.useState<string>('');
+  const [newProjectName, setNewProjectName] = React.useState('');
+  
   const [design, setDesign] = React.useState<{
     image: string;
     bom: any[];
     inputs: any;
   } | null>(null);
+
+  React.useEffect(() => {
+    async function loadInitialData() {
+      try {
+        const [dbClients, { data: { user } }] = await Promise.all([
+          dataService.getClients(),
+          supabase.auth.getUser()
+        ]);
+        setClients(dbClients);
+        
+        if (user) {
+          const dbProjects = await dataService.getProjects('designer', user.id);
+          setProjects(dbProjects);
+        }
+      } catch (error) {
+        console.error('Error loading generator data:', error);
+      }
+    }
+    loadInitialData();
+  }, []);
+
+  const handleSaveToClient = async () => {
+    if (!design) return;
+    if (!selectedClientId && !selectedProjectId) {
+      toast.error("Please select a client or project");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("No user found");
+
+      let projectId = selectedProjectId;
+
+      // Create new project if needed
+      if (!projectId && newProjectName && selectedClientId) {
+        const client = clients.find(c => c.id === selectedClientId);
+        const newProject = await dataService.createProject({
+          designer_id: user.id,
+          client_id: selectedClientId,
+          project_name: newProjectName,
+          budget: parseInt(formData.budget),
+          client_name: client?.email?.split('@')[0] || 'Client'
+        });
+        projectId = newProject.id;
+        setProjects([...projects, newProject]);
+      }
+
+      if (!projectId) {
+        toast.error("Please select or create a project");
+        return;
+      }
+
+      await dataService.saveDesign({
+        project_id: projectId,
+        inputs_json: formData,
+        image_url: design.image,
+        materials_json: design.bom,
+        total_cost: calculateTotal(),
+        status: 'pending'
+      });
+
+      toast.success("Design saved and sent to client!");
+      onBack();
+    } catch (error) {
+      console.error('Error saving design:', error);
+      toast.error("Failed to save design.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const [formData, setFormData] = React.useState({
     type: 'Wardrobe',
@@ -370,14 +452,57 @@ export function AIDesignGenerator({ onBack }: AIDesignGeneratorProps) {
 
                     <Card className="rounded-3xl border-brand-border bg-white shadow-sm">
                       <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                        <CardTitle className="text-[11px] font-bold text-brand-clay uppercase tracking-[0.2em]">Status</CardTitle>
-                        <Badge className="bg-brand-sidebar text-brand-olive border-none px-3 font-bold text-[10px] tracking-widest">DRAFT_01</Badge>
+                        <CardTitle className="text-[11px] font-bold text-brand-clay uppercase tracking-[0.2em]">Publish to Studio</CardTitle>
+                        <Badge className="bg-brand-sidebar text-brand-olive border-none px-3 font-bold text-[10px] tracking-widest">COLLECTION</Badge>
                       </CardHeader>
                       <CardContent className="space-y-4 pt-2">
-                         <Button variant="outline" className="w-full rounded-xl h-14 bg-brand-bg/50 hover:bg-brand-bg text-brand-olive font-bold text-[14px] border-none shadow-inner">
-                           <ShoppingBag className="mr-3 h-5 w-5" />
-                           Send to Client Dashboard
-                         </Button>
+                        <div className="space-y-3">
+                          <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                            <SelectTrigger className="rounded-xl border-brand-border bg-brand-bg/30">
+                              <SelectValue placeholder="Add to existing project" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">-- New Project --</SelectItem>
+                              {projects.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {!selectedProjectId || selectedProjectId === 'none' ? (
+                            <div className="space-y-3 p-4 bg-brand-bg/50 rounded-2xl border border-brand-border">
+                              <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                                <SelectTrigger className="rounded-lg bg-white border-brand-border">
+                                  <SelectValue placeholder="Select Client" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {clients.map(c => (
+                                    <SelectItem key={c.id} value={c.id}>{c.email}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input 
+                                placeholder="Project Name" 
+                                value={newProjectName}
+                                onChange={e => setNewProjectName(e.target.value)}
+                                className="rounded-lg bg-white border-brand-border"
+                              />
+                            </div>
+                          ) : null}
+
+                          <Button 
+                            onClick={handleSaveToClient}
+                            disabled={saving}
+                            className="w-full rounded-xl h-14 bg-brand-olive text-white font-bold text-[14px] shadow-lg shadow-brand-olive/10 hover:bg-brand-olive/90"
+                          >
+                            {saving ? (
+                              <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                            ) : (
+                              <ShoppingBag className="mr-3 h-5 w-5" />
+                            )}
+                            Save & Sync to Client
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>

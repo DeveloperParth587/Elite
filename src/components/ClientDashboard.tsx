@@ -34,38 +34,61 @@ import {
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { dataService } from '@/services/dataService';
+import { supabase } from '@/lib/supabase';
+
 export function ClientDashboard() {
+  const [projects, setProjects] = React.useState<any[]>([]);
   const [selectedProject, setSelectedProject] = React.useState<any>(null);
   const [comment, setComment] = React.useState('');
+  const [loading, setLoading] = React.useState(true);
 
-  const projects = [
-    { 
-      id: '1', 
-      name: 'Luxury Wardrobe Set', 
-      designer: 'Alex Designer', 
-      budget: '₹65,000', 
-      status: 'review',
-      image: 'https://picsum.photos/seed/furniture/800/600',
-      materials: [
-        { item: 'Marine Plywood', material: '70% Recycled', qty: 4, unit: 'sheets', cost: 4500 },
-        { item: 'Soft-close Hinges', material: 'Stainless Steel', qty: 12, unit: 'pcs', cost: 350 },
-        { item: 'Mirror Glass', material: 'Toughened', qty: 2, unit: 'panels', cost: 2800 },
-      ]
-    },
-    { 
-      id: '2', 
-      name: 'Modern Home Office', 
-      designer: 'Alex Designer', 
-      budget: '₹45,000', 
-      status: 'pending',
-      image: 'https://picsum.photos/seed/office/800/600',
-      materials: []
+  React.useEffect(() => {
+    async function loadClientData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const dbProjects = await dataService.getProjects('client', user.id);
+        
+        // Fetch the latest active design for each project
+        const projectsWithDesigns = await Promise.all(dbProjects.map(async (p) => {
+          const designs = await dataService.getDesigns(p.id);
+          const latestDesign = designs[0]; // Assuming latest is first
+          return {
+            ...p,
+            latestDesign
+          };
+        }));
+
+        setProjects(projectsWithDesigns);
+      } catch (error) {
+        console.error('Error loading client dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    loadClientData();
+  }, []);
 
-  const handleAction = (type: 'approve' | 'reject') => {
-    toast.success(`Project ${type === 'approve' ? 'approved' : 'rejected'} successfully!`);
-    setSelectedProject(null);
+  const handleAction = async (type: 'approve' | 'reject') => {
+    if (!selectedProject?.latestDesign) return;
+    
+    try {
+      const status = type === 'approve' ? 'approved' : 'rejected';
+      await dataService.updateDesignStatus(selectedProject.latestDesign.id, status);
+      toast.success(`Project ${type === 'approve' ? 'approved' : 'rejected'} successfully!`);
+      
+      // Update local state
+      setProjects(projects.map(p => 
+        p.id === selectedProject.id 
+          ? { ...p, latestDesign: { ...p.latestDesign, status } }
+          : p
+      ));
+      setSelectedProject(null);
+    } catch (error) {
+      toast.error("Failed to update status.");
+    }
   };
 
   const handleSendComment = () => {
@@ -95,31 +118,31 @@ export function ClientDashboard() {
               <Card 
                 key={project.id} 
                 className="group relative overflow-hidden border-brand-border hover:border-brand-olive/30 shadow-sm hover:shadow-2xl hover:shadow-brand-olive/5 transition-all duration-500 cursor-pointer rounded-3xl bg-white"
-                onClick={() => setSelectedProject(project)}
+                onClick={() => project.latestDesign && setSelectedProject(project)}
               >
                 <div className="aspect-square relative overflow-hidden">
-                   <img src={project.image} alt={project.name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                   <img src={project.latestDesign?.image_url || 'https://picsum.photos/seed/placeholder/800/600'} alt={project.project_name} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                    <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/40 to-transparent" />
                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                      <Badge className={cn(
                        "border-none px-3 py-1 font-bold text-[10px] tracking-widest uppercase",
-                       project.status === 'review' ? "bg-brand-clay text-white shadow-lg shadow-brand-clay/20" : "bg-neutral-500 text-white"
+                       project.latestDesign?.status === 'pending' ? "bg-brand-clay text-white shadow-lg shadow-brand-clay/20" : "bg-neutral-500 text-white"
                      )}>
-                       {project.status === 'review' ? 'Action Required' : 'On Hold'}
+                       {project.latestDesign?.status === 'pending' ? 'Action Required' : project.latestDesign?.status || 'No Design'}
                      </Badge>
-                     <span className="text-white font-bold text-xl drop-shadow-md">{project.budget}</span>
+                     <span className="text-white font-bold text-xl drop-shadow-md">₹{project.budget.toLocaleString()}</span>
                    </div>
                 </div>
                 <CardHeader className="p-6">
-                  <CardTitle className="text-xl font-serif text-brand-ink group-hover:text-brand-olive transition-colors">{project.name}</CardTitle>
+                  <CardTitle className="text-xl font-serif text-brand-ink group-hover:text-brand-olive transition-colors">{project.project_name}</CardTitle>
                   <CardDescription className="flex items-center gap-2 mt-1 font-medium text-neutral-400">
                     <div className="w-1.5 h-1.5 rounded-full bg-brand-clay" />
-                    Designer: {project.designer}
+                    ID: {project.id.slice(0, 8)}
                   </CardDescription>
                 </CardHeader>
                 <div className="px-6 pb-6 mt-auto">
                     <Button variant="outline" className="w-full rounded-xl border-brand-border group-hover:bg-brand-bg group-hover:border-brand-olive/50 group-hover:text-brand-olive transition-all font-bold text-[11px] uppercase tracking-[0.15em] h-11">
-                      Explore Design
+                      {project.latestDesign ? 'Explore Design' : 'Pending Designer'}
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                 </div>
@@ -137,7 +160,7 @@ export function ClientDashboard() {
             <div className="lg:col-span-8 space-y-8">
               <Card className="rounded-3xl border-brand-border overflow-hidden bg-white shadow-sm border-none ring-1 ring-brand-border">
                 <div className="aspect-[21/10] relative">
-                  <img src={selectedProject.image} alt={selectedProject.name} className="w-full h-full object-cover" />
+                  <img src={selectedProject.latestDesign.image_url} alt={selectedProject.project_name} className="w-full h-full object-cover" />
                   <Button 
                     variant="ghost" 
                     onClick={() => setSelectedProject(null)}
@@ -150,12 +173,12 @@ export function ClientDashboard() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-4">
                     <div>
                       <div className="text-[10px] font-bold text-brand-clay uppercase tracking-[0.3em] mb-2 font-sans">Project Proposal</div>
-                      <CardTitle className="text-4xl font-serif text-brand-ink">{selectedProject.name}</CardTitle>
+                      <CardTitle className="text-4xl font-serif text-brand-ink">{selectedProject.project_name}</CardTitle>
                     </div>
                     <div className="flex items-center gap-4 bg-brand-sidebar/30 p-4 rounded-2xl border border-brand-border">
                        <div className="text-right">
                          <div className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Approved Budget</div>
-                         <div className="text-3xl font-bold text-brand-olive tracking-tight leading-none">{selectedProject.budget}</div>
+                         <div className="text-3xl font-bold text-brand-olive tracking-tight leading-none">₹{selectedProject.budget.toLocaleString()}</div>
                        </div>
                     </div>
                   </div>
@@ -182,12 +205,12 @@ export function ClientDashboard() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {selectedProject.materials.map((m: any, i: number) => (
+                            {selectedProject.latestDesign.materials_json.map((m: any, i: number) => (
                               <TableRow key={i} className="hover:bg-brand-bg/30 transition-colors border-brand-border">
                                 <TableCell className="font-bold text-brand-ink py-5 pl-6">{m.item}</TableCell>
                                 <TableCell className="text-neutral-500 font-medium italic">{m.material}</TableCell>
                                 <TableCell className="font-bold text-brand-ink">{m.qty} {m.unit}</TableCell>
-                                <TableCell className="text-right pr-8 font-bold text-brand-olive">₹{m.cost.toLocaleString()}</TableCell>
+                                <TableCell className="text-right pr-8 font-bold text-brand-olive">₹{(m.qty * (m.cost || 500)).toLocaleString()}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>

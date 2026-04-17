@@ -32,24 +32,49 @@ import { Badge } from '@/components/ui/badge';
 import { motion } from 'motion/react';
 import { cn } from '@/lib/utils';
 
+import { dataService } from '@/services/dataService';
+import { supabase } from '@/lib/supabase';
+
 interface DesignerDashboardProps {
   onNewDesign: () => void;
 }
 
 export function DesignerDashboard({ onNewDesign }: DesignerDashboardProps) {
-  const stats = [
-    { label: 'Active Projects', value: '12', icon: Clock, color: 'text-brand-olive', bg: 'bg-brand-olive/10' },
-    { label: 'Total Revenue', value: '₹4.2L', icon: DollarSign, color: 'text-brand-clay', bg: 'bg-brand-clay/10' },
-    { label: 'Pending Approvals', value: '5', icon: ArrowUpRight, color: 'text-brand-olive', bg: 'bg-brand-olive/10' },
-    { label: 'Completed', value: '28', icon: CheckCircle2, color: 'text-brand-clay', bg: 'bg-brand-clay/10' },
-  ];
+  const [stats, setStats] = React.useState([
+    { label: 'Active Projects', value: '0', icon: Clock, color: 'text-brand-olive', bg: 'bg-brand-olive/10' },
+    { label: 'Total Revenue', value: '₹0', icon: DollarSign, color: 'text-brand-clay', bg: 'bg-brand-clay/10' },
+    { label: 'Pending Approvals', value: '0', icon: ArrowUpRight, color: 'text-brand-olive', bg: 'bg-brand-olive/10' },
+    { label: 'Completed', value: '0', icon: CheckCircle2, color: 'text-brand-clay', bg: 'bg-brand-clay/10' },
+  ]);
+  const [recentProjects, setRecentProjects] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
 
-  const recentProjects = [
-    { id: '1', name: 'Luxury Living Room', client: 'John Doe', budget: '₹50,000', status: 'pending' },
-    { id: '2', name: 'Modern Kitchen', client: 'Sarah Smith', budget: '₹1,20,000', status: 'approved' },
-    { id: '3', name: 'Compact Office', client: 'Mike Ross', budget: '₹35,000', status: 'rejected' },
-    { id: '4', name: 'Master Bedroom', client: 'John Doe', budget: '₹85,000', status: 'revision' },
-  ];
+  React.useEffect(() => {
+    async function loadData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const [dbStats, dbProjects] = await Promise.all([
+          dataService.getDesignerStats(user.id),
+          dataService.getProjects('designer', user.id)
+        ]);
+
+        setStats([
+          { label: 'Active Projects', value: dbStats.activeProjects.toString(), icon: Clock, color: 'text-brand-olive', bg: 'bg-brand-olive/10' },
+          { label: 'Total Revenue', value: `₹${(dbStats.totalRevenue / 100000).toFixed(1)}L`, icon: DollarSign, color: 'text-brand-clay', bg: 'bg-brand-clay/10' },
+          { label: 'Pending Approvals', value: dbStats.pendingApprovals.toString(), icon: ArrowUpRight, color: 'text-brand-olive', bg: 'bg-brand-olive/10' },
+          { label: 'Completed', value: dbStats.completed.toString(), icon: CheckCircle2, color: 'text-brand-clay', bg: 'bg-brand-clay/10' },
+        ]);
+        setRecentProjects(dbProjects.slice(0, 5));
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -122,11 +147,11 @@ export function DesignerDashboard({ onNewDesign }: DesignerDashboardProps) {
               </TableHeader>
               <TableBody>
                 {recentProjects.map((project) => (
-                  <TableRow key={project.id} className="hover:bg-brand-sidebar/30 border-brand-border transition-colors">
-                    <TableCell className="font-medium text-brand-ink">{project.name}</TableCell>
-                    <TableCell className="text-neutral-500">{project.client}</TableCell>
-                    <TableCell className="font-semibold text-brand-ink">{project.budget}</TableCell>
-                    <TableCell>{getStatusBadge(project.status)}</TableCell>
+                   <TableRow key={project.id} className="hover:bg-brand-sidebar/30 border-brand-border transition-colors">
+                    <TableCell className="font-medium text-brand-ink">{project.project_name}</TableCell>
+                    <TableCell className="text-neutral-500">{project.client_name}</TableCell>
+                    <TableCell className="font-semibold text-brand-ink">₹{project.budget.toLocaleString()}</TableCell>
+                    <TableCell>{getStatusBadge(project.status || 'pending')}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="icon" className="rounded-lg hover:bg-brand-sidebar hover:text-brand-olive text-neutral-400">
                         <MoreHorizontal className="h-4 w-4" />
