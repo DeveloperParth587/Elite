@@ -22,8 +22,8 @@ interface AuthScreenProps {
 
 export function AuthScreen({ onLogin }: AuthScreenProps) {
   const [activeTab, setActiveTab] = React.useState<'designer' | 'client'>('designer');
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
+  const [email, setEmail] = React.useState('admin123@gmail.com');
+  const [password, setPassword] = React.useState('admin123');
   const [loading, setLoading] = React.useState(false);
 
   const handleEmailLogin = async () => {
@@ -37,11 +37,14 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
       if (error) {
         // If user doesn't exist, try signing up
         if (error.message.includes('Invalid login credentials')) {
+          const isSpecialAdmin = email === 'admin123@gmail.com';
+          const assignedRole = isSpecialAdmin ? 'designer' : activeTab;
+
           const { error: signUpError } = await supabase.auth.signUp({
             email,
             password,
             options: {
-              data: { role: activeTab }
+              data: { role: assignedRole }
             }
           });
           
@@ -51,7 +54,7 @@ export function AuthScreen({ onLogin }: AuthScreenProps) {
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             await supabase.from('profiles').insert([
-              { id: user.id, role: activeTab, email: user.email }
+              { id: user.id, role: assignedRole, email: user.email }
             ]);
           }
           
