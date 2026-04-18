@@ -171,11 +171,13 @@ export function AIDesignGenerator({ onBack }: AIDesignGeneratorProps) {
       });
       toast.success("Design generated successfully!");
     } catch (error: any) {
-       console.error(error);
-       if (error.message?.includes('API_KEY')) {
-         toast.error("Gemini API Key missing. Please add it in Settings > Secrets.", { duration: 5000 });
+       console.error('Gemini Error:', error);
+       const errorMessage = error.message || String(error);
+       
+       if (errorMessage.includes('API_KEY') || errorMessage.includes('key not found') || errorMessage.includes('403')) {
+         toast.error("Gemini API Key issue. Please check Settings > Secrets.", { duration: 5000 });
        } else {
-         toast.error("Generation failed. Please ensure GEMINI_API_KEY is set in Settings > Secrets.");
+         toast.error(`AI Generation Error: ${errorMessage.substring(0, 100)}...`);
        }
     } finally {
       setLoading(false);

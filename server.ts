@@ -5,6 +5,9 @@ import { fileURLToPath } from "url";
 import ExcelJS from "exceljs";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from "dotenv";
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +32,12 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Request logging
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
 
   // API Route for Admin: Add Member
   app.post("/api/admin/add-member", async (req, res) => {
@@ -130,6 +139,16 @@ async function startServer() {
       console.error("Error generating Excel:", error);
       res.status(500).json({ error: "Failed to generate Excel" });
     }
+  });
+
+  // 404 handler for API routes - helps debugging when routes don't match
+  app.all("/api/*", (req, res) => {
+    console.warn(`[404] API Route not found: ${req.method} ${req.url}`);
+    res.status(404).json({ 
+      error: "API endpoint not found.",
+      method: req.method,
+      path: req.url
+    });
   });
 
   // Vite middleware for development

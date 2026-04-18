@@ -107,8 +107,19 @@ export const dataService = {
       })
     });
 
+    if (!response.ok) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      } else {
+        const text = await response.text();
+        console.error("Non-JSON error response:", text);
+        throw new Error(`Server returned non-JSON error (Status ${response.status}). This often means the API route is missing or the server crashed.`);
+      }
+    }
+
     const data = await response.json();
-    if (data.error) throw new Error(data.error);
     return data.user;
   },
 

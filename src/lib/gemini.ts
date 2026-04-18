@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const ai = new GoogleGenAI({ 
-  apiKey: process.env.GEMINI_API_KEY || '' 
+  apiKey: process.env.GEMINI_API_KEY
 });
 
 export async function generateFurnitureImage(params: any) {
@@ -53,7 +53,7 @@ Return a JSON array of objects, each containing:
 - estimated_cost_per_unit: A sample numeric value for cost estimation.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
+    model: "gemini-flash-latest",
     contents: [{ text: prompt }],
     config: {
       responseMimeType: "application/json",
