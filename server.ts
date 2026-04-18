@@ -33,10 +33,8 @@ async function startServer() {
     next();
   });
 
-  const apiRouter = Router();
-
   // Health check
-  apiRouter.get("/health", (req, res) => {
+  app.get("/api/health", (req, res) => {
     res.json({ 
       status: "ok", 
       timestamp: new Date().toISOString(),
@@ -45,23 +43,28 @@ async function startServer() {
   });
 
   // API Route for Admin: Add Member
-  apiRouter.post("/admin/add-member", async (req, res) => {
+  app.post("/api/admin/add-member", async (req, res) => {
+    console.log(`[ROUTE] POST /api/admin/add-member hit`);
     if (!supabaseAdmin) {
+      console.error("[ROUTE] Supabase Admin not configured");
       return res.status(500).json({ error: "Supabase Admin is not configured." });
     }
 
     try {
       const { email, password, role, full_name, phone } = req.body;
-      console.log(`[API] Creating user profile: ${email} (${role})`);
+      console.log(`[ROUTE] Creating user profile: ${email} (${role})`);
       
       // 1. Create User in Auth
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
-        password,
+        password: password || 'Welcome123!',
         email_confirm: true
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error("[ROUTE] Auth Error:", authError);
+        throw authError;
+      }
 
       // 2. Create Profile
       const { error: profileError } = await supabaseAdmin
@@ -70,21 +73,25 @@ async function startServer() {
           id: authData.user.id, 
           email, 
           role,
-          full_name,
-          phone
+          full_name: full_name || null,
+          phone: phone || null
         }]);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error("[ROUTE] Profile Error:", profileError);
+        throw profileError;
+      }
 
+      console.log("[ROUTE] Success creating member");
       res.json({ success: true, user: authData.user });
     } catch (error: any) {
-      console.error("Admin add-member error:", error);
+      console.error("[ROUTE] Admin add-member error:", error);
       res.status(500).json({ error: error.message || "Failed to add member" });
     }
   });
 
   // API Route for Excel Generation
-  apiRouter.post("/generate-excel", async (req, res) => {
+  app.post("/api/generate-excel", async (req, res) => {
     try {
       const { projectName, materials, clientName } = req.body;
 
@@ -141,9 +148,6 @@ async function startServer() {
       res.status(500).json({ error: "Failed to generate Excel" });
     }
   });
-
-  // Mount API Router
-  app.use("/api", apiRouter);
 
   // 404 handler for API routes
   app.all("/api/*", (req, res) => {
