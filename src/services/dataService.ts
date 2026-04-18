@@ -110,5 +110,75 @@ export const dataService = {
     const data = await response.json();
     if (data.error) throw new Error(data.error);
     return data.user;
+  },
+
+  // Client Queries
+  async getClientQueries(role: 'designer' | 'client', userId: string) {
+    const query = supabase.from('client_queries').select('*');
+    if (role === 'designer') {
+      // In a real app, we might filter by assigned designer or show all pending for all designers
+      // For this SaaS, let's show all for now since designers might pick them up
+    } else {
+      query.eq('client_id', userId);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async createClientQuery(query: { title: string; description: string; budget: number; client_id: string }) {
+    const { data, error } = await supabase
+      .from('client_queries')
+      .insert([query])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  async updateQueryStatus(queryId: string, status: 'approved' | 'rejected', designerId?: string) {
+    const update: any = { status };
+    if (designerId) update.designer_id = designerId;
+
+    const { error } = await supabase
+      .from('client_queries')
+      .update(update)
+      .eq('id', queryId);
+    if (error) throw error;
+  },
+
+  // Chat/Messaging
+  async getChatMessages(parentId: string) {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('parent_id', parentId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async sendMessage(message: { parent_id: string; sender_id: string; message?: string; image_url?: string }) {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert([message])
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  subscribeToChat(parentId: string, onMessage: (message: any) => void) {
+    return supabase
+      .channel(`chat:${parentId}`)
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'chat_messages',
+        filter: `parent_id=eq.${parentId}`
+      }, (payload) => {
+        onMessage(payload.new);
+      })
+      .subscribe();
   }
 };

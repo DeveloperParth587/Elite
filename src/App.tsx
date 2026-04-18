@@ -8,6 +8,9 @@ import { Sidebar } from './components/Sidebar';
 import { DesignerDashboard } from './components/DesignerDashboard';
 import { AIDesignGenerator } from './components/AIDesignGenerator';
 import { ClientDashboard } from './components/ClientDashboard';
+import { ClientQueries } from './components/ClientQueries';
+import { DesignerRequests } from './components/DesignerRequests';
+import { DesignerClientManager } from './components/DesignerClientManager';
 import { AdminMemberManager } from './components/AdminMemberManager';
 import { AuthScreen } from './components/AuthScreen';
 import { Toaster } from '@/components/ui/sonner';
@@ -123,7 +126,7 @@ export default function App() {
               {activeSection === 'dashboard' && (
                 <DesignerDashboard onNewDesign={() => setActiveSection('new-design')} />
               )}
-              {activeSection === 'admin' && (
+               {activeSection === 'admin' && (
                 adminView === 'main' ? (
                   <div className="space-y-8 animate-in fade-in duration-700">
                     <div className="flex flex-col gap-2">
@@ -163,9 +166,11 @@ export default function App() {
                   <AdminMemberManager onBack={() => setAdminView('main')} />
                 )
               )}
+              {activeSection === 'requests' && <DesignerRequests />}
               {activeSection === 'new-design' && (
                 <AIDesignGenerator onBack={() => setActiveSection('dashboard')} />
               )}
+              {activeSection === 'clients' && <DesignerClientManager />}
               {activeSection === 'projects' && (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-400">
                    <p className="text-3xl font-serif italic mb-2">Project Library</p>
@@ -176,7 +181,8 @@ export default function App() {
           ) : (
             <>
               {activeSection === 'dashboard' && <ClientDashboard />}
-              {activeSection !== 'dashboard' && (
+              {activeSection === 'queries' && <ClientQueries />}
+              {activeSection !== 'dashboard' && activeSection !== 'queries' && (
                 <div className="flex flex-col items-center justify-center h-[60vh] text-neutral-400">
                    <p className="text-3xl font-serif italic mb-2">{activeSection}</p>
                    <p className="text-sm font-medium tracking-wide uppercase">Fetching architectural data...</p>

@@ -12,7 +12,8 @@ import {
   X,
   Palette,
   Diamond,
-  ShieldCheck
+  ShieldCheck,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ export function Sidebar({ role, userEmail, activeSection, onSectionChange, onLog
   const designerItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'admin', label: 'Admin Portal', icon: ShieldCheck, show: isAdmin },
+    { id: 'requests', label: 'Service Requests', icon: MessageSquare },
     { id: 'projects', label: 'Projects', icon: Package },
     { id: 'new-design', label: 'New AI Design', icon: PlusCircle },
     { id: 'clients', label: 'Clients', icon: Users },
@@ -43,6 +45,7 @@ export function Sidebar({ role, userEmail, activeSection, onSectionChange, onLog
 
   const clientItems = [
     { id: 'dashboard', label: 'My Projects', icon: LayoutDashboard },
+    { id: 'queries', label: 'Send Query', icon: MessageSquare },
     { id: 'feedback', label: 'Feedback', icon: Package },
   ];
 

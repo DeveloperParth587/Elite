@@ -170,9 +170,13 @@ export function AIDesignGenerator({ onBack }: AIDesignGeneratorProps) {
         inputs: { ...formData }
       });
       toast.success("Design generated successfully!");
-    } catch (error) {
-       toast.error("Failed to generate design. Check your API key.");
+    } catch (error: any) {
        console.error(error);
+       if (error.message?.includes('API_KEY')) {
+         toast.error("Gemini API Key missing. Please add it in Settings > Secrets.", { duration: 5000 });
+       } else {
+         toast.error("Generation failed. Please ensure GEMINI_API_KEY is set in Settings > Secrets.");
+       }
     } finally {
       setLoading(false);
     }
