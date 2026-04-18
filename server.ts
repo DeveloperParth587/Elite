@@ -1,9 +1,8 @@
-import express from "express";
+import express, { Router } from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import ExcelJS from "exceljs";
-import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from "dotenv";
 
@@ -11,11 +10,6 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Initialize Gemini AI on the server where process.env is accessible
-const genAI = process.env.GEMINI_API_KEY 
-  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
-  : null;
 
 // Initialize Supabase Admin
 const supabaseAdmin = (process.env.VITE_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -39,14 +33,26 @@ async function startServer() {
     next();
   });
 
+  const apiRouter = Router();
+
+  // Health check
+  apiRouter.get("/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      supabase: !!supabaseAdmin 
+    });
+  });
+
   // API Route for Admin: Add Member
-  app.post("/api/admin/add-member", async (req, res) => {
+  apiRouter.post("/admin/add-member", async (req, res) => {
     if (!supabaseAdmin) {
       return res.status(500).json({ error: "Supabase Admin is not configured." });
     }
 
     try {
       const { email, password, role, full_name, phone } = req.body;
+      console.log(`[API] Creating user profile: ${email} (${role})`);
       
       // 1. Create User in Auth
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -78,14 +84,13 @@ async function startServer() {
   });
 
   // API Route for Excel Generation
-  app.post("/api/generate-excel", async (req, res) => {
+  apiRouter.post("/generate-excel", async (req, res) => {
     try {
       const { projectName, materials, clientName } = req.body;
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet("Bill of Materials");
 
-      // Set columns
       worksheet.columns = [
         { header: "Item", key: "item", width: 25 },
         { header: "Material", key: "material", width: 20 },
@@ -95,7 +100,6 @@ async function startServer() {
         { header: "Total Line Cost (₹)", key: "total", width: 15 },
       ];
 
-      // Styling Header
       worksheet.getRow(1).font = { bold: true };
 
       let grandTotal = 0;
@@ -112,18 +116,15 @@ async function startServer() {
         });
       });
 
-      // Add Total Row
       const totalRow = worksheet.addRow({
         item: "GRAND TOTAL",
         total: grandTotal,
       });
       totalRow.font = { bold: true };
       
-      // ₹ Currency formatting for cost and total columns
       worksheet.getColumn('cost').numFmt = '"₹"#,##0.00';
       worksheet.getColumn('total').numFmt = '"₹"#,##0.00';
 
-      // Set headers for file download
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -141,7 +142,10 @@ async function startServer() {
     }
   });
 
-  // 404 handler for API routes - helps debugging when routes don't match
+  // Mount API Router
+  app.use("/api", apiRouter);
+
+  // 404 handler for API routes
   app.all("/api/*", (req, res) => {
     console.warn(`[404] API Route not found: ${req.method} ${req.url}`);
     res.status(404).json({ 

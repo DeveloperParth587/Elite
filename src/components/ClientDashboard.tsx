@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
+import { DesignFeedback } from './DesignFeedback';
 
 import { dataService } from '@/services/dataService';
 import { supabase } from '@/lib/supabase';
@@ -40,14 +41,15 @@ import { supabase } from '@/lib/supabase';
 export function ClientDashboard() {
   const [projects, setProjects] = React.useState<any[]>([]);
   const [selectedProject, setSelectedProject] = React.useState<any>(null);
-  const [comment, setComment] = React.useState('');
   const [loading, setLoading] = React.useState(true);
+  const [userId, setUserId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     async function loadClientData() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+        setUserId(user.id);
 
         const dbProjects = await dataService.getProjects('client', user.id);
         
@@ -89,12 +91,6 @@ export function ClientDashboard() {
     } catch (error) {
       toast.error("Failed to update status.");
     }
-  };
-
-  const handleSendComment = () => {
-    if (!comment.trim()) return;
-    toast.success("Feedback sent to designer.");
-    setComment('');
   };
 
   return (
@@ -249,39 +245,13 @@ export function ClientDashboard() {
 
                   <div className="h-px bg-brand-border" />
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-[11px] font-bold uppercase tracking-[0.2em] text-neutral-400">Request Adjustment</Label>
-                      <Badge className="bg-brand-bg text-brand-olive border-none text-[9px] font-black tracking-widest px-2 py-0.5">PRIORITY</Badge>
-                    </div>
-                    <Textarea 
-                      placeholder="Share your aesthetic feedback or functional changes..." 
-                      className="min-h-[140px] rounded-xl border-brand-border focus:ring-brand-olive bg-brand-bg/30 resize-none text-[14px] p-5 font-medium placeholder:text-neutral-300"
-                      value={comment}
-                      onChange={(e) => setComment(e.target.value)}
+                  {userId && selectedProject.latestDesign && (
+                    <DesignFeedback 
+                      parentId={selectedProject.latestDesign.id} 
+                      currentUserId={userId} 
+                      role="client" 
                     />
-                    <Button 
-                      onClick={handleSendComment}
-                      className="w-full bg-brand-ink hover:bg-brand-ink/90 text-white h-12 rounded-xl shadow-sm font-bold tracking-tight"
-                      disabled={!comment.trim()}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      Publish Feedback
-                    </Button>
-                  </div>
-
-                  <div className="p-5 bg-brand-sidebar/40 rounded-2xl border border-brand-border">
-                    <div className="flex items-center gap-2 text-brand-olive mb-3">
-                       <MessageSquare className="h-4 w-4" />
-                       <span className="text-[10px] font-black uppercase tracking-widest">Architectural Chat</span>
-                    </div>
-                    <div className="space-y-4">
-                       <div className="text-[13px] leading-relaxed">
-                          <span className="font-bold text-brand-ink block mb-0.5 font-serif italic text-sm">Designer Alex:</span>
-                          <span className="text-neutral-500 font-medium">"I've optimized the layout for the mirror glass panels to enhance natural light reflection."</span>
-                       </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

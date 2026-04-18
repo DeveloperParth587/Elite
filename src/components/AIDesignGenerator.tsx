@@ -174,7 +174,9 @@ export function AIDesignGenerator({ onBack }: AIDesignGeneratorProps) {
        console.error('Gemini Error:', error);
        const errorMessage = error.message || String(error);
        
-       if (errorMessage.includes('API_KEY') || errorMessage.includes('key not found') || errorMessage.includes('403')) {
+       if (errorMessage.includes('429') || errorMessage.includes('quota')) {
+         toast.error("AI Quota Exceeded. The free tier of Gemini has reached its limit for the day. Please try again later or check your Google AI Studio plan.", { duration: 8000 });
+       } else if (errorMessage.includes('API_KEY') || errorMessage.includes('key not found') || errorMessage.includes('403')) {
          toast.error("Gemini API Key issue. Please check Settings > Secrets.", { duration: 5000 });
        } else {
          toast.error(`AI Generation Error: ${errorMessage.substring(0, 100)}...`);
@@ -212,9 +214,18 @@ export function AIDesignGenerator({ onBack }: AIDesignGeneratorProps) {
         a.click();
         a.remove();
         toast.success("Excel exported successfully!");
+      } else {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errData = await response.json();
+          throw new Error(errData.error || "Export failed");
+        } else {
+          throw new Error(`Server returned status ${response.status}`);
+        }
       }
-    } catch (error) {
-      toast.error("Failed to export Excel.");
+    } catch (error: any) {
+      console.error("Export error:", error);
+      toast.error(`Failed to export Excel: ${error.message}`);
     }
   };
 
