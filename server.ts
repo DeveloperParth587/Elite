@@ -37,7 +37,7 @@ async function startServer() {
     }
 
     try {
-      const { email, password, role } = req.body;
+      const { email, password, role, full_name, phone } = req.body;
       
       // 1. Create User in Auth
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -51,7 +51,13 @@ async function startServer() {
       // 2. Create Profile
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
-        .insert([{ id: authData.user.id, email, role }]);
+        .insert([{ 
+          id: authData.user.id, 
+          email, 
+          role,
+          full_name,
+          phone
+        }]);
 
       if (profileError) throw profileError;
 

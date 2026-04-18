@@ -97,7 +97,7 @@ export const dataService = {
     return stats;
   },
 
-  async addMember(member: { email: string; password?: string; role: 'designer' | 'client' }) {
+  async addMember(member: { email: string; password?: string; role: 'designer' | 'client'; full_name?: string; phone?: string }) {
     const response = await fetch('/api/admin/add-member', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -110,6 +110,18 @@ export const dataService = {
     const data = await response.json();
     if (data.error) throw new Error(data.error);
     return data.user;
+  },
+
+  async updateClientProfile(userId: string, updates: Partial<UserProfile>) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
   },
 
   // Client Queries
